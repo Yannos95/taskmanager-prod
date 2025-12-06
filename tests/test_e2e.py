@@ -1,18 +1,19 @@
+import sys
+import os
 import pytest
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import UnexpectedAlertPresentException, NoAlertPresentException, TimeoutException
+from selenium.common.exceptions import UnexpectedAlertPresentException, TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 import threading
 import time
-import sys
-import os
 import uuid
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from app import create_app, db
 from models import User, Task
 
@@ -36,7 +37,10 @@ def test_server():
             u.set_password("pass123")
             db.session.add(u)
             
-            task = Task(title="Initial Task", user_id=1, due_date=None)
+            # FIX CRITIQUE : Flusher pour obtenir l'ID utilisateur avant d'insérer la tâche liée
+            db.session.flush() 
+
+            task = Task(title="Initial Task", user_id=u.id, due_date=None)
             db.session.add(task)
             db.session.commit()
 
