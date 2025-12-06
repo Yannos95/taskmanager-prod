@@ -54,7 +54,7 @@ jobs:
         run: pytest tests/test_unit.py tests/test_integration.py
       
       - name: Run Flask App for E2E Tests (using Gunicorn)
-        run: gunicorn app:create_app() -b 0.0.0.0:5000 &
+        run: gunicorn 'app:create_app()'' -b 0.0.0.0:5000 &
       
       - name: Wait for App to be ready
         run: sleep 5
