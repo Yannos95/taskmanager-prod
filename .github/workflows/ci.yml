@@ -1,0 +1,87 @@
+name: Flask CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+  pull_request:
+    branches:
+      - dev
+      - main
+  
+env:
+  POSTGRES_USER: ci_user
+  POSTGRES_PASSWORD: ci_password
+  POSTGRES_HOST: localhost
+  POSTGRES_PORT: 5432
+  POSTGRES_DB: ci_testdb
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: Start PostgreSQL container
+        run: |
+          docker run --name ci_db -e POSTGRES_USER=${{ env.POSTGRES_USER }} -e POSTGRES_PASSWORD=${{ env.POSTGRES_PASSWORD }} -e POSTGRES_DB=${{ env.POSTGRES_DB }} -d -p 5432:5432 postgres:latest
+          sleep 10
+      
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          
+      - name: Install dependencies (including Gunicorn, pytest, Selenium)
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt gunicorn selenium webdriver-manager
+      
+      - name: Load ENV variables
+        run: |
+          echo "POSTGRES_USER=${{ env.POSTGRES_USER }}" >> $GITHUB_ENV
+          echo "POSTGRES_PASSWORD=${{ env.POSTGRES_PASSWORD }}" >> $GITHUB_ENV
+          echo "POSTGRES_HOST=${{ env.POSTGRES_HOST }}" >> $GITHUB_ENV
+          echo "POSTGRES_PORT=${{ env.POSTGRES_PORT }}" >> $GITHUB_ENV
+          echo "POSTGRES_DB=${{ env.POSTGRES_DB }}" >> $GITHUB_ENV
+      
+      - name: Migrate Database (Create Tables)
+        run: python migrate.py
+        
+      - name: Run Unit and Integration Tests
+        run: pytest tests/test_unit.py tests/test_integration.py
+      
+      - name: Run Flask App for E2E Tests (using Gunicorn)
+        run: gunicorn app:create_app() -b 0.0.0.0:5000 &
+      
+      - name: Wait for App to be ready
+        run: sleep 5
+        
+      - name: Run E2E Tests (Selenium)
+        run: pytest tests/test_e2e.py
+
+      - name: Validate Docker Image Build
+        run: docker build .
+
+  push-to-dockerhub:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/taskmanager:latest
