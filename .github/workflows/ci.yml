@@ -27,7 +27,7 @@ jobs:
       - name: Start PostgreSQL container
         run: |
           docker run --name ci_db -e POSTGRES_USER=${{ env.POSTGRES_USER }} -e POSTGRES_PASSWORD=${{ env.POSTGRES_PASSWORD }} -e POSTGRES_DB=${{ env.POSTGRES_DB }} -d -p 5432:5432 postgres:latest
-          sleep 10
+          sleep 30
       
       - name: Set up Python 3.9
         uses: actions/setup-python@v4
