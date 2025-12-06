@@ -37,7 +37,6 @@ def test_server():
             u.set_password("pass123")
             db.session.add(u)
             
-            # FIX CRITIQUE : Flusher pour obtenir l'ID utilisateur avant d'insérer la tâche liée
             db.session.flush() 
 
             task = Task(title="Initial Task", user_id=u.id, due_date=None)
@@ -65,6 +64,11 @@ def test_server():
 def driver():
     service = Service(executable_path=ChromeDriverManager().install())
     options = webdriver.ChromeOptions()
+    
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    
     driver = webdriver.Chrome(service=service, options=options)
     driver.implicitly_wait(5)
     
